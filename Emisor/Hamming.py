@@ -1,5 +1,3 @@
-#CORRECCION DE ERRORES HAMMING 
-
 def get_parity_bit(trama, index):
     subtrama = [trama[i] for i in range(len(trama)) if (i + 1) & (1 << index)]
     return sum(subtrama) % 2
