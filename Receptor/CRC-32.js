@@ -1,7 +1,5 @@
-require('slice')
-const { string_to_bits } = require('./util.js')
+const { string_to_bits, print, binaryToString } = require('./util.js')
 
-const print = o => console.log()
 
 /**
  * Operates xor with a given trama and a polinom
@@ -39,6 +37,9 @@ const get_usable_trama = trama => {
  * @param {string} polinom
  */
 const process_trama = (trama, polinom) => {
+    tramaBlocks = trama.split(' ');
+    polinom = tramaBlocks[tramaBlocks.length - 1];
+
     trama = string_to_bits(trama)
     polinom = string_to_bits(polinom)
     let out_trama = []
@@ -59,6 +60,9 @@ const process_trama = (trama, polinom) => {
         }
 
         result = get_usable_trama(result)
+        if (result[0].length === 0){
+            return true
+        }
 
         out_trama = [...out_trama, ...result[0]]
         operate_trama = result[1]
@@ -71,64 +75,52 @@ const process_trama = (trama, polinom) => {
         while (operate_trama.length < polinom.length && trama.length > 0) {
             operate_trama.push(trama.pop())
         }
+
     }
 
     errors_founded = out_trama.includes(1)
-    // console.log(out_trama)
     return errors_founded
 }
 
 const crc = (trama, polinom) => {
-    console.log('Trama inicial:', trama)
     const founded_errors = process_trama(trama, polinom)
     if (founded_errors) {
-        console.log('> Se encontraron errores en la trama')
-        console.log('> La trama se descarta')
+        return '0'
     } else {
-        console.log('> No se encontraron errores en la trama')
+        return '1'
     }
 }
 
-console.log('---- Pruebas con tramas correctas ----')
-Trama = '111100001010'
-Polinomio = '10011'
-crc(Trama, Polinomio)
+var net = require('net')
+const HOST = "127.0.0.1"  
+const PORT = 65432      
 
-Trama = '100111101'
-Polinomio = '10101'
-crc(Trama, Polinomio)
+const server = net.createServer()
 
-Trama = '110101011'
-Polinomio = '1001'
-crc(Trama, Polinomio)
+server.listen(PORT, () => {
+    print(`server listening on port ${server.address().port}`)
+})
 
-console.log('---- Pruebas con tramas con error ----')
-Trama = '10100111011'
-Polinomio = '1101'
-crc(Trama, Polinomio)
+server.on('connection', socket => {
+    print('> conexion a socket iniciada')
+    socket.on('data', data => {
+        let trama =  data.toString()
+        const tramaBlocks = trama.split(' ');
+        const polinom = tramaBlocks[tramaBlocks.length - 1];
 
-Trama = '10100111011'
-Polinomio = '1101'
-crc(Trama, Polinomio)
+        trama = trama.replace(' ', '')
+        trama = trama.replace(' ', '')
+        trama = trama.replace(' ', '')
+        // Capa de enlace: verificar integridad 
+        let result = crc(trama,polinom)
+        socket.write(result)
+    })
 
-Trama = '11010110101011010000000000000000'
-Polinomio = '100000100110000010001110110110111'
-crc(Trama, Polinomio)
-
-console.log('---- Pruebas con 2 errores ----')
-Trama = '110100001110'
-Polinomio = '10011'
-crc(Trama, Polinomio)
-
-Trama = '100101001'
-Polinomio = '10101'
-crc(Trama, Polinomio)
-
-console.log('---- Pruebas con cambios sin errores ----')
-Trama = '00100111000'
-Polinomio = '1101'
-crc(Trama, Polinomio)
-
-Trama = '101100001000'
-Polinomio = '10011'
-crc(Trama, Polinomio)
+    socket.on('close', () => {
+        print('> Comunicacion finalizada')
+    })
+    
+    socket.on('error', err => {
+        print(err.message)
+    })
+})
